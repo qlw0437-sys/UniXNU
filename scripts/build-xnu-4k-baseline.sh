@@ -49,13 +49,7 @@ for PATCH in "$ROOT"/patches/xnu/*.patch "$ROOT"/kits/NativePrelink/patches/*.pa
 done
 export XNU_AVAILABILITY_PL=$ROOT/.cache/fakeroot/usr/local/libexec/availability.pl
 python3 scripts/prepare-xnu-source.py
-python3 -c "
-from pathlib import Path
-p = Path('.cache/xnu-work/makedefs/MakeInc.def')
-if p.exists():
-    p.write_text(p.read_text().replace('-mach_msg2', ''))
-    print('Patched MakeInc.def: removed -mach_msg2 for Xcode 15/16 mig compatibility')
-"
+python3 scripts/patch-xnu-xcode.py
 # The first pass of a new tree (XNU_BOOTSTRAP=1, set by the unixnu driver) only has to leave the compile records and
 # link.filelist for the archive builders that run after it, so it links without their archives.
 BOOTSTRAP=${XNU_BOOTSTRAP:-0}
