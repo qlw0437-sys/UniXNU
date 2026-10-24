@@ -39,6 +39,22 @@ IORPCMessageFromMach(IORPCMessageMach * msg, bool reply)
             p.write_text(new_text, encoding="utf-8")
             print(f"Patched {p}: defined IORPCMessageFromMach as static inline for kernel mode")
 
+def patch_warning_flags():
+    search_dirs = [Path("."), Path("device"), Path("../device"), Path("..")]
+    for base in search_dirs:
+        if not base.exists():
+            continue
+        for ext in ("*.py", "*.sh"):
+            for p in base.rglob(ext):
+                try:
+                    text = p.read_text(encoding="utf-8")
+                    if "-Wno-unnecessary-virtual-specifier" in text:
+                        p.write_text(text.replace("-Wno-unnecessary-virtual-specifier", "-Wno-unknown-warning-option"), encoding="utf-8")
+                        print(f"Patched {p}: replaced -Wno-unnecessary-virtual-specifier with -Wno-unknown-warning-option")
+                except Exception:
+                    pass
+
 if __name__ == "__main__":
     patch_makeinc_def()
     patch_iorpc_headers()
+    patch_warning_flags()

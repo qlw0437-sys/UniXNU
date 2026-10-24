@@ -211,6 +211,10 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: bash -euo pipefail -c "$PRE_BUILD"
 
+      - name: Patch Xcode compiler flags
+        run: |
+          python3 scripts/patch-xnu-xcode.py
+
       - name: Build kernel
         id: kernel
         env:
