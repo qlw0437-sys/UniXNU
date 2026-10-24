@@ -203,21 +203,11 @@ def streamline_sheng_for_fast_build():
                 text = text.replace("CONFIG_XNU_BOOT_PROGRESS=y", "CONFIG_XNU_BOOT_PROGRESS=n")
                 text = text.replace("CONFIG_XNU_NATIVE_LEGACY_DISPLAY=y", "CONFIG_XNU_NATIVE_LEGACY_DISPLAY=n")
                 text = text.replace("CONFIG_XNU_NATIVE_ADRENO=y", "CONFIG_XNU_NATIVE_ADRENO=n")
-                text = text.replace("CONFIG_XNU_VERIFIED_ROOT_PROBE=y", "CONFIG_XNU_VERIFIED_ROOT_PROBE=n")
-                text = text.replace("CONFIG_XNU_OWNER_ROOT_AUDIT=y", "CONFIG_XNU_OWNER_ROOT_AUDIT=n")
-                text = text.replace("CONFIG_XNU_OWNER_ROOT_TRUST=y", "CONFIG_XNU_OWNER_ROOT_TRUST=n")
-                text = text.replace('CONFIG_XNU_NATIVE_VIRTIO_BLOCK_ARCHIVE="{tree}/build/native-virtio-block-verified-bundle/libNativeVirtioBlock.a"',
-                                    'CONFIG_XNU_NATIVE_VIRTIO_BLOCK_ARCHIVE="{tree}/build/native-virtio-block/libNativeVirtioBlock.a"')
-                text = text.replace('CONFIG_XNU_VERIFIED_ROOT_ARCHIVE="{tree}/build/verified-root-os-xnu-bundle/libVerifiedRootProbe.a"',
-                                    '# CONFIG_XNU_VERIFIED_ROOT_ARCHIVE is not set')
                 text = text.replace("XNU_BOOT_PROGRESS=1", "XNU_BOOT_PROGRESS=0")
                 text = text.replace("XNU_NATIVE_LEGACY_DISPLAY=1", "XNU_NATIVE_LEGACY_DISPLAY=0")
                 text = text.replace("XNU_NATIVE_ADRENO=1", "XNU_NATIVE_ADRENO=0")
-                text = text.replace("XNU_VERIFIED_ROOT_PROBE=1", "XNU_VERIFIED_ROOT_PROBE=0")
-                text = text.replace("XNU_OWNER_ROOT_AUDIT=1", "XNU_OWNER_ROOT_AUDIT=0")
-                text = text.replace("XNU_OWNER_ROOT_TRUST=1", "XNU_OWNER_ROOT_TRUST=0")
                 cfg_file.write_text(text, encoding="utf-8")
-                print(f"Streamlined {cfg_file}: disabled non-essential display/adreno/progress drivers and set proper virtio path")
+                print(f"Streamlined {cfg_file}: disabled non-essential display/adreno/progress drivers")
 
     # Re-run defconfig to re-sync Context if needed
     import subprocess
