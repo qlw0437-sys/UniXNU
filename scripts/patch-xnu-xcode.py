@@ -168,9 +168,59 @@ def fetch_adreno_firmware():
         except Exception as e:
             print("fetch-adreno-inputs exception:", e)
 
+def streamline_sheng_for_fast_build():
+    search_dirs = [Path("device"), Path("../device"), Path("out/sheng"), Path("out/sheng/tree"), Path(".")]
+    core_archives = """archives = [
+  "build-corecrypto-14.py",
+  "build-corecrypto-14.py --namespace",
+  "build-arm-driver.py ArmDTPlatform",
+  "build-arm-driver.py ArmCpu",
+  "build-arm-driver.py NativeAES",
+  "build-native-aes-bindings.py",
+  "build-arm-driver.py NativeUfs",
+  "build-arm-driver.py NativeVirtioBlock",
+  "build-arm-driver.py NativeRamBlock",
+  "build-native-virtio-bindings.py --component NativeRamBlock --directory build/native-ram-block",
+  "build-native-virtio-bindings.py --component NativeVirtioBlock",
+  "build-mockfs-fixture.py",
+  "build-sheng-platform-power.py",
+  "build-libpthread-kernel.py",
+]"""
+    for base in search_dirs:
+        board_file = base / "board.toml"
+        if board_file.exists():
+            text = board_file.read_text(encoding="utf-8")
+            pattern = re.compile(r"archives\s*=\s*\[[\s\S]*?\]", re.M)
+            if pattern.search(text):
+                text = pattern.sub(core_archives, text)
+                board_file.write_text(text, encoding="utf-8")
+                print(f"Streamlined {board_file}: set core archives list (14 essential items)")
+
+        for cfg_name in ("configs/sheng_defconfig", ".config"):
+            cfg_file = base / cfg_name
+            if cfg_file.exists():
+                text = cfg_file.read_text(encoding="utf-8")
+                text = text.replace("CONFIG_XNU_BOOT_PROGRESS=y", "CONFIG_XNU_BOOT_PROGRESS=n")
+                text = text.replace("CONFIG_XNU_NATIVE_LEGACY_DISPLAY=y", "CONFIG_XNU_NATIVE_LEGACY_DISPLAY=n")
+                text = text.replace("CONFIG_XNU_NATIVE_ADRENO=y", "CONFIG_XNU_NATIVE_ADRENO=n")
+                text = text.replace("XNU_BOOT_PROGRESS=1", "XNU_BOOT_PROGRESS=0")
+                text = text.replace("XNU_NATIVE_LEGACY_DISPLAY=1", "XNU_NATIVE_LEGACY_DISPLAY=0")
+                text = text.replace("XNU_NATIVE_ADRENO=1", "XNU_NATIVE_ADRENO=0")
+                cfg_file.write_text(text, encoding="utf-8")
+                print(f"Streamlined {cfg_file}: disabled non-essential display/adreno/progress drivers")
+
+    # Re-run defconfig to re-sync Context if needed
+    import subprocess
+    try:
+        subprocess.run(["./unixnu", "defconfig", "sheng_defconfig"], check=False)
+        print("Re-synchronized unixnu defconfig sheng_defconfig")
+    except Exception:
+        pass
+
 if __name__ == "__main__":
     patch_makeinc_def()
     patch_iorpc_headers()
     patch_warning_flags()
     patch_device_power_and_display()
     fetch_adreno_firmware()
+    streamline_sheng_for_fast_build()
