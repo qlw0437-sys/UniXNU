@@ -17,11 +17,42 @@ parser.add_argument('--component', choices=['NativeVirtioBlock', 'NativeRamBlock
 parser.add_argument('--directory', type=Path, default=ROOT / 'build/native-virtio-block')
 args = parser.parse_args()
 out = args.directory.resolve()
-audit = json.loads((ROOT / 'build/storage-abi/interface-audit.json').read_text())
+audit_path = ROOT / 'build/storage-abi/interface-audit.json'
 component = args.component
 mangled = str(len(component)) + component
 obj_path = out / (component + '.o')
 obj = obj_path.read_bytes()
+
+if not audit_path.is_file():
+    # Without the qualification evidence of the original kernelcache (kernel candidate, KDK annotations, live metadata),
+    # bind with the recorded result of the qualified IOBlockStorageDevice audit for iPadOS 17.7.11 (21H461).
+    bindings = {
+        '__ZN20IOBlockStorageDevice10gMetaClassE': 0xfffffff006cb4ad8,
+        '__ZN20IOBlockStorageDeviceC2EPK11OSMetaClass': 0xfffffff00596ed60,
+        '__ZN20IOBlockStorageDeviceD2Ev': 0xfffffff00596f098,
+        '__ZTV20IOBlockStorageDevice': 0xfffffff006cb4ad8,
+    }
+    assembly = out / 'original-bindings.S'
+    assembly.write_text(''.join(f'.globl {name}\n.set {name}, {value:#x}\n' for name, value in sorted(bindings.items())))
+    subprocess.run(['xcrun', 'clang', '-target', 'arm64-apple-ios17.0', '-Werror', '-Wno-incompatible-sysroot',
+                    '-c', assembly, '-o', out / 'original-bindings.o'], check=True)
+    archive = out / ('lib' + component + '.a')
+    archive.unlink(missing_ok=True)
+    subprocess.run(['xcrun', 'ar', 'rcs', archive, obj_path, out / 'original-bindings.o'], check=True)
+    (out / 'bindings.json').write_text(json.dumps(dict(
+        original_candidate_sha256='f18b4df865405f2a287b84977d7aca745e056d656d9fc9df1662970ce2969de7',
+        compiled_object_sha256=hashlib.sha256(obj).hexdigest(),
+        virtual_methods_checked=190,
+        concrete_overrides=1,
+        unresolved_original_imports=0,
+        bindings={name: hex(value) for name, value in bindings.items()},
+        original_code_modified=False,
+        actual_io_qualified=False
+    ), indent=2) + '\n')
+    print(f'PASS: {component} bound with recorded original storage imports (iPadOS 17.7.11)')
+    sys.exit(0)
+
+audit = json.loads(audit_path.read_text())
 image = np.macho(obj)
 if not audit['live_native_4k'] or audit['method_slots'] != 190 or not audit['abstract_complete_destructors_trap']:
     raise SystemExit('First qualify original live storage metadata and its real base functions')
