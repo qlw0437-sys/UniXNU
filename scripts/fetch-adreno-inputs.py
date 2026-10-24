@@ -16,7 +16,11 @@ def fetch(item):
     if path.exists():
         data = path.read_bytes()
     else:
-        request = urllib.request.Request(url, headers={'User-Agent': 'sheng-offline-adreno-audit'})
+        import os
+        headers = {'User-Agent': 'sheng-offline-adreno-audit'}
+        if os.environ.get('GITHUB_TOKEN'):
+            headers['Authorization'] = 'Bearer ' + os.environ['GITHUB_TOKEN']
+        request = urllib.request.Request(url, headers=headers)
         with urllib.request.urlopen(request, timeout=30) as response:
             data = response.read()
         if blob:

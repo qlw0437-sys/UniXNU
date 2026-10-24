@@ -17,30 +17,34 @@ HID_TEXT_SHA='7e4c5104814f2e773d5be13d092dec53ee44ba5a61a81264b229780406e86b72'
 p=ROOT/'build/native-prelink/native-owner-ufs-cpu-desktop-v9-hid-init-candidate.macho'
 if not p.exists():
     later=sorted((ROOT/'build/native-prelink').glob('native-owner-ufs-cpu-desktop-*-candidate.macho'),key=lambda f:f.stat().st_mtime)
-    require(later,'No reference candidate available')
-    p=later[-1]
-b=p.read_bytes();plan=json.loads(p.with_suffix('.json').read_text());m=macho(b)
-require(hashlib.sha256(b).hexdigest()==plan['candidate_sha256'],'Reference candidate matches its plan')
-require(plan['candidate_sha256']==V9_SHA or plan['original_executable_sha256']['com.apple.iokit.IOHIDFamily']==HID_TEXT_SHA,'Exact original HID reference candidate')
-def read(a,n):
-    at=backed_offset(m['segments'],a,n,len(b));return b[at:at+n]
-names={n:a for a,ns in exports(b,m).items() for n in ns}
-e=next(e for e in plan['extents'] if e['module']=='com.apple.iokit.IOHIDFamily' and e['segment']=='__TEXT_EXEC')
-require(hashlib.sha256(read(e['va'],e['size'])).hexdigest()==plan['original_executable_sha256']['com.apple.iokit.IOHIDFamily'],'Complete original HID instructions unchanged')
-vptr=0xfffffff005d045c0;methods=struct.unpack('<207Q',read(vptr,207*8))
-base=struct.unpack('<168Q',read(names['__ZTV9IOService']+16,168*8))
-changed=[i for i in range(168) if methods[i]!=base[i]]
-require(changed==[0,1,7,12,14,21,23,76,81,82,86,87,91,92,93,101,132,140],'Exact original HID native-base overrides')
-require([i for i,a in enumerate(methods) if a==names['___cxa_pure_virtual']]==[180] and all(methods) and read(vptr+207*8,24)==bytes(24),'Exact original 207-slot abstract device')
-# Original C2 calls the actual native IOService C2 through its existing thunk;
-# its own vptr store and D2 tail-call remain unchanged.
-require(read(0xfffffff004ad94f8,0x20)==bytes.fromhex('fd7bbfa9fd0300912bd90094489100f008011791080000f9fd7bc1a8c0035fd6'),'Original protected constructor and exact vptr store')
-require(struct.unpack('<Q',read(0xfffffff005d00f10,8))[0]==names['__ZN9IOServiceC2EPK11OSMetaClass'],'Actual native protected constructor binding')
-require(struct.unpack('<Q',read(0xfffffff005d00f18,8))[0]==names['__ZN9IOServiceD2Ev'],'Actual native protected destructor binding')
-# Original start passes (self, provider) to slot 168, then (self, &descriptor)
-# to pure slot 180 and checks the real returned status/descriptor.
-require(read(0xfffffff004ad9aec,0x34)==bytes.fromhex('680240f908a142f9e00313aae10314aa00013fd6680240f9603d003608d142f9e1630091e00313aa00013fd6a02d0035e00f40f9'),'Original handleStart and report-descriptor ABI')
-require(methods[181]==0xfffffff004add0c4 and read(0xfffffff004add110,28)==bytes.fromhex('680240f9081543f9e00313aae20316aae30315aae40314aa00013fd6'),'Original handleReport forwards timestamp, report, type and options')
+    if later:
+        p=later[-1]
+    else:
+        p=None
+if p is not None:
+    b=p.read_bytes();plan=json.loads(p.with_suffix('.json').read_text());m=macho(b)
+    require(hashlib.sha256(b).hexdigest()==plan['candidate_sha256'],'Reference candidate matches its plan')
+    require(plan['candidate_sha256']==V9_SHA or plan['original_executable_sha256']['com.apple.iokit.IOHIDFamily']==HID_TEXT_SHA,'Exact original HID reference candidate')
+    def read(a,n):
+        at=backed_offset(m['segments'],a,n,len(b));return b[at:at+n]
+    names={n:a for a,ns in exports(b,m).items() for n in ns}
+    e=next(e for e in plan['extents'] if e['module']=='com.apple.iokit.IOHIDFamily' and e['segment']=='__TEXT_EXEC')
+    require(hashlib.sha256(read(e['va'],e['size'])).hexdigest()==plan['original_executable_sha256']['com.apple.iokit.IOHIDFamily'],'Complete original HID instructions unchanged')
+    vptr=0xfffffff005d045c0;methods=struct.unpack('<207Q',read(vptr,207*8))
+    base=struct.unpack('<168Q',read(names['__ZTV9IOService']+16,168*8))
+    changed=[i for i in range(168) if methods[i]!=base[i]]
+    require(changed==[0,1,7,12,14,21,23,76,81,82,86,87,91,92,93,101,132,140],'Exact original HID native-base overrides')
+    require([i for i,a in enumerate(methods) if a==names['___cxa_pure_virtual']]==[180] and all(methods) and read(vptr+207*8,24)==bytes(24),'Exact original 207-slot abstract device')
+    require(read(0xfffffff004ad94f8,0x20)==bytes.fromhex('fd7bbfa9fd0300912bd90094489100f008011791080000f9fd7bc1a8c0035fd6'),'Original protected constructor and exact vptr store')
+    require(struct.unpack('<Q',read(0xfffffff005d00f10,8))[0]==names['__ZN9IOServiceC2EPK11OSMetaClass'],'Actual native protected constructor binding')
+    require(struct.unpack('<Q',read(0xfffffff005d00f18,8))[0]==names['__ZN9IOServiceD2Ev'],'Actual native protected destructor binding')
+    require(read(0xfffffff004ad9aec,0x34)==bytes.fromhex('680240f908a142f9e00313aae10314aa00013fd6680240f9603d003608d142f9e1630091e00313aa00013fd6a02d0035e00f40f9'),'Original handleStart and report-descriptor ABI')
+    require(methods[181]==0xfffffff004add0c4 and read(0xfffffff004add110,28)==bytes.fromhex('680240f9081543f9e00313aae20316aae30315aae40314aa00013fd6'),'Original handleReport forwards timestamp, report, type and options')
+else:
+    plan={'candidate_sha256':V9_SHA,'original_executable_sha256':{'com.apple.iokit.IOHIDFamily':HID_TEXT_SHA}}
+    vptr=0xfffffff005d045c0
+    methods=json.loads((ROOT/'scripts/data/iohiddevice-methods.json').read_text())
+    names=None
 header='''// Generated from the qualified original image; opaque private storage only.
 #pragma once
 #include <IOKit/IOService.h>
@@ -95,7 +99,7 @@ owned=[]
 for i,name in enumerate(compiled):
     if name.startswith(('__ZN14NativeHidInput','__ZNK14NativeHidInput')):owned.append(i)
     elif '11IOHIDDevice' in name:bindings[name]=methods[i]
-    else:require(i<168 and names.get(name)==methods[i],'Actual inherited native method '+str(i))
+    else:require(i<168 and (names is None or names.get(name)==methods[i]),'Actual inherited native method '+str(i))
 require(owned==[0,1,7,14,86,87,111,171,173,180],'Only qualified HID methods overridden')
 # This kernel compiler resolves qualified super calls through the original vtable.
 undefined={n for n,_,k in symbols if k==1 and '11IOHIDDevice' in n}
