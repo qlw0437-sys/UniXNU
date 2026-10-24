@@ -65,6 +65,16 @@ def build_archives(ctx, env):
     # Archives that no builder produces (they need inputs outside the repositories) must be supplied.
     for key, value in sorted(xnu_env(ctx).items()):
         if key.endswith('_ARCHIVE') and value.endswith('.a') and not Path(value).is_file():
+            if key == 'XNU_NATIVE_VIRTIO_BLOCK_ARCHIVE':
+                fallback = ctx.tree / 'build/native-virtio-block/libNativeVirtioBlock.a'
+                if fallback.is_file():
+                    Path(value).parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copyfile(fallback, value)
+                    log(f'Linked {key} fallback: {fallback} -> {value}')
+                    continue
+            if key == 'XNU_VERIFIED_ROOT_ARCHIVE':
+                if not ctx.config.get('XNU_VERIFIED_ROOT_PROBE'):
+                    continue
             raise Error(f'{key}: {value} not found; no builder makes it, supply the archive')
 
 
