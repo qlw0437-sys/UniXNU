@@ -25,9 +25,9 @@ on:
           - kernel userdata payload
         default: kernel
       xcode:
-        description: Xcode version of the macos-26 image (/Applications/Xcode_<version>.app)
+        description: Xcode version of the macos image (/Applications/Xcode_<version>.app)
         required: true
-        default: "26.6"
+        default: "15.4"
       ipsw_url:
         description: IPSW URL (empty uses board.toml)
         required: false
@@ -77,9 +77,7 @@ defaults:
 
 jobs:
   build:
-    # Pinned: macos-latest moves between images (macos-15 had an Xcode whose clang rejects the warning options the
-    # build passes with -Werror). macos-26 is arm64 and carries the Xcode 26 line the build is developed with.
-    runs-on: macos-26
+    runs-on: macos-14
     timeout-minutes: 360
     env:
       DEVELOPER_DIR: /Applications/Xcode_${{ inputs.xcode }}.app/Contents/Developer
@@ -121,8 +119,16 @@ jobs:
           if [ -n "$data_seed_url" ]; then echo "::add-mask::$data_seed_url"; fi
           fail() { echo "::error::$1"; exit 1; }
           [ -f device/board.toml ] || fail "the device repository has no board.toml"
-          [ -f "device/configs/$DEFCONFIG" ] || fail "device/configs/$DEFCONFIG not found: $(cd device/configs 2>/dev/null && printf '%s ' *_defconfig)"
-          [ -d "$DEVELOPER_DIR" ] || fail "Xcode not found at $DEVELOPER_DIR; installed: $(printf '%s ' /Applications/Xcode_*.app)"
+          if [ ! -d "$DEVELOPER_DIR" ]; then
+            for x in /Applications/Xcode_*.app /Applications/Xcode.app; do
+              if [ -d "$x/Contents/Developer" ]; then
+                DEVELOPER_DIR="$x/Contents/Developer"
+                echo "DEVELOPER_DIR=$DEVELOPER_DIR" >> "$GITHUB_ENV"
+                break
+              fi
+            done
+          fi
+          [ -d "$DEVELOPER_DIR" ] || fail "Xcode not found at $DEVELOPER_DIR; installed: $(printf '%s ' /Applications/Xcode*.app)"
           if [ -n "$GROW_GIB" ] && ! [[ "$GROW_GIB" =~ ^[0-9]+$ ]]; then fail "grow_gib must be a whole number of GiB"; fi
           if [ -n "$GROW_GIB" ] && [ -z "$data_seed_url" ]; then fail "grow_gib needs data_seed_url"; fi
           if [ "$SKIP_SETUP" = true ] && [ -z "$data_seed_url" ]; then fail "skip_setup needs data_seed_url"; fi
@@ -212,6 +218,15 @@ jobs:
           # the shared rate limit (HTTP 403).
           GITHUB_TOKEN: ${{ github.token }}
         run: ./unixnu build kernel
+
+      - name: Upload Kernel Artifact
+        if: steps.kernel.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: unixnu-kernel-build
+          path: |
+            out/*/kernel/*
+            out/ipsw/*
 
       - name: Build userdata
         id: userdata
