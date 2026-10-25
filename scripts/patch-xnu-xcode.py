@@ -196,6 +196,14 @@ def streamline_sheng_for_fast_build():
                 board_file.write_text(text, encoding="utf-8")
                 print(f"Streamlined {board_file}: set core archives list (14 essential items)")
 
+        feeds_file = base / "feeds.toml"
+        if feeds_file.exists():
+            print(f"Found {feeds_file}:")
+            try:
+                print(feeds_file.read_text(encoding="utf-8")[:1000])
+            except Exception as e:
+                print(f"Could not read {feeds_file}: {e}")
+
         for cfg_name in ("configs/sheng_defconfig", ".config"):
             cfg_file = base / cfg_name
             if cfg_file.exists():

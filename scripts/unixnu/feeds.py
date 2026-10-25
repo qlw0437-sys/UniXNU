@@ -40,11 +40,20 @@ def read_sources(ctx):
     for base in (ctx.root, ctx.device):
         path = base / 'feeds.toml'
         if path.is_file():
-            for entry in load_toml(path).get('source', []):
-                kind = entry.get('kind')
-                if kind not in KINDS or not entry.get('name'):
-                    raise Error(f'{path}: every [[source]] needs name and kind in {sorted(KINDS)}')
-                sources[(kind, entry['name'])] = entry
+            sources_raw = load_toml(path).get('source', [])
+            if isinstance(sources_raw, list):
+                for entry in sources_raw:
+                    if isinstance(entry, dict):
+                        kind = entry.get('kind')
+                        name = entry.get('name')
+                        if kind in KINDS and name:
+                            sources[(kind, name)] = entry
+            elif isinstance(sources_raw, dict):
+                for name, entry in sources_raw.items():
+                    if isinstance(entry, dict):
+                        kind = entry.get('kind', 'driver')
+                        if kind in KINDS:
+                            sources[(kind, name)] = {**entry, 'name': name, 'kind': kind}
     path = ctx.device / 'local.toml'
     if path.is_file():
         local = load_toml(path)
