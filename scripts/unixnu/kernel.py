@@ -64,16 +64,21 @@ def build_archives(ctx, env):
             raise Error(f'[kernel] archives: {script} missing')
         log(f'kernel: archive {index}/{len(entries)}: {entry}')
         run(['python3', script, *parts[1:]], cwd=ctx.tree, env=env, log_file=ctx.logs / f'archive-{index:02d}-{Path(parts[0]).stem}.log')
+    # Ensure virtio bundle files (bindings.json, object, archive) are present
+    virtio_val = xnu_env(ctx).get('XNU_NATIVE_VIRTIO_BLOCK_ARCHIVE')
+    if virtio_val:
+        dest_dir = Path(virtio_val).parent
+        src_dir = ctx.tree / 'build/native-virtio-block'
+        if src_dir.is_dir() and dest_dir != src_dir:
+            dest_dir.mkdir(parents=True, exist_ok=True)
+            for item in src_dir.iterdir():
+                if item.is_file():
+                    shutil.copyfile(item, dest_dir / item.name)
+            log(f'Ensured VirtIO bundle contents in {dest_dir}')
+
     # Archives that no builder produces (they need inputs outside the repositories) must be supplied.
     for key, value in sorted(xnu_env(ctx).items()):
         if key.endswith('_ARCHIVE') and value.endswith('.a') and not Path(value).is_file():
-            if key == 'XNU_NATIVE_VIRTIO_BLOCK_ARCHIVE':
-                fallback = ctx.tree / 'build/native-virtio-block/libNativeVirtioBlock.a'
-                if fallback.is_file():
-                    Path(value).parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copyfile(fallback, value)
-                    log(f'Linked {key} fallback: {fallback} -> {value}')
-                    continue
             if key == 'XNU_VERIFIED_ROOT_ARCHIVE':
                 dest = Path(value)
                 dest.parent.mkdir(parents=True, exist_ok=True)
