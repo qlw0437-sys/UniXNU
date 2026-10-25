@@ -10,7 +10,7 @@ on:
       device_ref:
         description: Device repository ref
         required: true
-        default: main
+        default: a979eb9675aaeb24a0bd981922ac2a323561ac11
       defconfig:
         description: Defconfig name (configs/ of the device repository)
         required: true
