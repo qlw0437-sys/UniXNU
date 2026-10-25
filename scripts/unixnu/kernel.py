@@ -86,6 +86,8 @@ def build_archives(ctx, env):
                 stub_o = dest.parent / 'verified_root_stub.o'
                 stub_c.write_text('''
 #include <stdint.h>
+#include <stddef.h>
+
 void native_verified_root_probe(void) {}
 volatile uint32_t native_verified_root_status = 1;
 volatile uint32_t native_verified_root_results[8] = {0};
@@ -93,6 +95,40 @@ volatile uint32_t native_verified_root_signature_calls = 0;
 volatile uintptr_t native_verified_root_manifest_pointer = 0;
 volatile uintptr_t native_verified_root_key_pointer = 0;
 volatile uint64_t native_verified_root_block_count = 0;
+
+void boot_progress_poll(void) {}
+void native_legacy_display_probe(void) {}
+int native_verified_block_manifest_sha384(void) { return 1; }
+int native_verified_block_root_authorized(void) { return 1; }
+int native_verified_block_volume_device(void) { return 0; }
+
+const uint8_t verified_root_key[1] = {0};
+const void *verified_root_policies[2] = {0, 0};
+const uint64_t verified_root_policy_count = 1;
+int vr_open(void) { return 0; }
+int vr_verify_block(void) { return 0; }
+const void *vr_xnu_crypto[2] = {0, 0};
+
+void ios_report_lock(void) __asm__("_ZN20IOBlockStorageDevice17reportLockabilityEPb");
+void ios_report_lock(void) {}
+
+void ios_get_prov(void) __asm__("_ZN20IOBlockStorageDevice18doGetProvisionStatusEyyPjP34IOBlockStorageProvisionDeviceExtenty");
+void ios_get_prov(void) {}
+
+void ios_poll_req(void) __asm__("_ZN20IOBlockStorageDevice22reportPollRequirementsEPbS0_");
+void ios_poll_req(void) {}
+
+void ios_init_dict(void) __asm__("_ZN20IOBlockStorageDevice4initEP12OSDictionary");
+void ios_init_dict(void) {}
+
+void ios_unmap(void) __asm__("_ZN20IOBlockStorageDevice7doUnmapEP25IOBlockStorageDeviceExtentjj");
+void ios_unmap(void) {}
+
+void ios_discard(void) __asm__("_ZN20IOBlockStorageDevice9doDiscardEyy");
+void ios_discard(void) {}
+
+void ios_get_prop(void) __asm__("_ZNK20IOBlockStorageDevice11getPropertyEPK8OSSymbol");
+void ios_get_prop(void) {}
 ''')
                 try:
                     sdk = subprocess.check_output(['xcrun', '--sdk', 'iphoneos', '--show-sdk-path'], text=True).strip()
