@@ -109,26 +109,21 @@ int vr_open(void) { return 0; }
 int vr_verify_block(void) { return 0; }
 const void *vr_xnu_crypto[2] = {0, 0};
 
-void ios_report_lock(void) __asm__("_ZN20IOBlockStorageDevice17reportLockabilityEPb");
-void ios_report_lock(void) {}
+#define STUB_EXPORT(sym, name) \
+  __attribute__((used)) void name(void) __asm__(sym); \
+  void name(void) {}
 
-void ios_get_prov(void) __asm__("_ZN20IOBlockStorageDevice18doGetProvisionStatusEyyPjP34IOBlockStorageProvisionDeviceExtenty");
-void ios_get_prov(void) {}
-
-void ios_poll_req(void) __asm__("_ZN20IOBlockStorageDevice22reportPollRequirementsEPbS0_");
-void ios_poll_req(void) {}
-
-void ios_init_dict(void) __asm__("_ZN20IOBlockStorageDevice4initEP12OSDictionary");
-void ios_init_dict(void) {}
-
-void ios_unmap(void) __asm__("_ZN20IOBlockStorageDevice7doUnmapEP25IOBlockStorageDeviceExtentjj");
-void ios_unmap(void) {}
-
-void ios_discard(void) __asm__("_ZN20IOBlockStorageDevice9doDiscardEyy");
-void ios_discard(void) {}
-
-void ios_get_prop(void) __asm__("_ZNK20IOBlockStorageDevice11getPropertyEPK8OSSymbol");
-void ios_get_prop(void) {}
+STUB_EXPORT("_ZN20IOBlockStorageDevice11requestIdleEv", ios_req_idle)
+STUB_EXPORT("_ZN20IOBlockStorageDevice13doSetPriorityEP25IOBlockStorageDeviceExtentjh", ios_set_prio)
+STUB_EXPORT("_ZN20IOBlockStorageDevice13setPropertiesEP8OSObject", ios_set_props)
+STUB_EXPORT("_ZN20IOBlockStorageDevice17doLockUnlockMediaEb", ios_lock_media)
+STUB_EXPORT("_ZN20IOBlockStorageDevice17reportLockabilityEPb", ios_rep_lock)
+STUB_EXPORT("_ZN20IOBlockStorageDevice18doGetProvisionStatusEyyPjP34IOBlockStorageProvisionDeviceExtenty", ios_prov_stat)
+STUB_EXPORT("_ZN20IOBlockStorageDevice22reportPollRequirementsEPbS0_", ios_rep_poll)
+STUB_EXPORT("_ZN20IOBlockStorageDevice4initEP12OSDictionary", ios_init_dict)
+STUB_EXPORT("_ZN20IOBlockStorageDevice7doUnmapEP25IOBlockStorageDeviceExtentjj", ios_unmap)
+STUB_EXPORT("_ZN20IOBlockStorageDevice9doDiscardEyy", ios_discard)
+STUB_EXPORT("_ZNK20IOBlockStorageDevice11getPropertyEPK8OSSymbol", ios_get_prop)
 ''')
                 try:
                     sdk = subprocess.check_output(['xcrun', '--sdk', 'iphoneos', '--show-sdk-path'], text=True).strip()
